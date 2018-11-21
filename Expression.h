@@ -9,17 +9,6 @@
 #include <string>
 
 class Expression {
-private:
-    std::vector<token*> tokens;
-    std::map<int, std::string> variables;
-    std::map<std::string, int> varValues;
-    expressionForm form;
-
-    int parseNumber(std::string& s);
-    std::string parseIdentifier(std::string& s);
-
-    bool isOperator(const term& t);
-    int applyOperator(int arg1, int arg2, term op);
 public:
     enum term {
         IDENTIFIER,
@@ -50,10 +39,28 @@ public:
     Expression & operator=(Expression&& expr);
 
     void tokenize(std::string s);
-    void infixToPostfix();
+    Expression infixToPostfix();
 
     int eval();
     bool verify();
+
+    //bool isOperator(const term& t);
+	/**
+	 * Checks if a term is an operator
+	 * @param t input term
+	 * @return true - if operator, else - false
+	 */
+	static bool isOperator(const term &t) {
+		switch (t) {
+		case PLUS:
+		case MINUS:
+		case MUL:
+		case DIV:
+			return true;
+		default:
+			return false;
+		}
+	}
 
     const std::vector<token *> &getTokens() const;
     void setTokens(const std::vector<token *> &tokens);
@@ -70,4 +77,15 @@ public:
     ~Expression();
 
     Expression();
+
+private:
+	std::vector<token*> tokens;
+	std::map<int, std::string> variables;
+	std::map<std::string, int> varValues;
+	expressionForm form;
+
+	int parseNumber(std::string& s);
+	std::string parseIdentifier(std::string& s);
+
+	int applyOperator(int arg1, int arg2, term op);
 };

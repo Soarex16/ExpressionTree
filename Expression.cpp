@@ -164,38 +164,22 @@ void Expression::tokenize(std::string s) {
 }
 
 /**
- * Checks if a term is an operator
- * @param t input term
- * @return true - if operator, else - false
- */
-bool Expression::isOperator(const term &t) {
-    switch (t) {
-        case PLUS:
-        case MINUS:
-        case MUL:
-        case DIV:
-            return true;
-        default:
-            return false;
-    }
-}
-
-/**
  * Converts the input sequence of tokens from the infix form into the
  * reverse Polish notation using the sorting station algorithm
  * If expression not in infix form - doing nothing
  * @param infixSequence Token sequence to be converted
  * @return Token sequence in reverse Polish notation
  */
-void Expression::infixToPostfix() {
+Expression Expression::infixToPostfix() {
+    Expression e;
     if (form != INFIX) {
-        return;
+        return e;
     }
 
     /**
     * Auxiliary data structure to determine the priorities of operators
     */
-    std::map<term, int> opPriority{
+    std::map<term, int> opPriority {
             {PLUS,  1},
             {MINUS, 1},
             {MUL,   2},
@@ -243,10 +227,6 @@ void Expression::infixToPostfix() {
                 }
 
                 tokenBuffer.pop();
-
-                if (tokenBuffer.empty()) {
-                    throw "Error in bracket sequence! (ReversePolishNotation conversion)";
-                }
                 break;
             }
         }
@@ -262,8 +242,12 @@ void Expression::infixToPostfix() {
         }
     }
 
-    tokens = reversedSequence;
-    form = POSTFIX;
+    e.tokens = reversedSequence;
+    e.form = POSTFIX;
+    e.variables = variables;
+    e.varValues = varValues;
+
+    return e;
 }
 
 /**
@@ -333,15 +317,16 @@ int Expression::applyOperator(int arg1, int arg2, term op) {
  * @return calculated value
  */
 int Expression::eval() {
+    Expression e(*this);
     if (form == PREFIX) {
         throw "Can't evaluate expression in prefix form!";
     } else if (form == INFIX) {
-        infixToPostfix();
+        e = infixToPostfix();
     }
 
     std::stack<token *> calculator;
-    for (int i = 0; i < tokens.size(); ++i) {
-        token *tok = tokens[i];
+    for (int i = 0; i < e.tokens.size(); ++i) {
+        token *tok = e.tokens[i];
 
         switch (tok->t) {
             case NUMBER: {
@@ -352,7 +337,7 @@ int Expression::eval() {
                 break;
             }
             case IDENTIFIER: {
-                if (variables.empty() || varValues.empty()) {
+                if (e.variables.empty() || e.varValues.empty()) {
                     throw "Expression contains variables, but table of identifiers or the table of their values!";
                 }
 
@@ -398,15 +383,16 @@ int Expression::eval() {
  * @return true - if correct, false if expression invalid of in prefix form
  */
 bool Expression::verify() {
+    Expression e(*this);
     if (form == PREFIX) {
         return false;
     } else if (form == INFIX) {
-        infixToPostfix();
+        e = infixToPostfix();
     }
 
     std::stack<token *> calculator;
-    for (int i = 0; i < tokens.size(); ++i) {
-        token *tok = tokens[i];
+    for (int i = 0; i < e.tokens.size(); ++i) {
+        token *tok = e.tokens[i];
 
         switch (tok->t) {
             case NUMBER:
