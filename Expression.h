@@ -32,6 +32,11 @@ public:
         int val;
     };
 
+  	/**
+  	* Auxiliary data structure to determine the priorities of operators
+  	*/
+  	static std::map<term, int> opPriority;
+
     Expression(Expression& expr);
     Expression & operator=(Expression& expr);
 
@@ -62,8 +67,8 @@ public:
 		}
 	}
 
-    const std::vector<token *> &getTokens() const;
-    void setTokens(const std::vector<token *> &tokens);
+    const std::vector<std::shared_ptr<token>> & getTokens() const;
+    void setTokens(const std::vector<std::shared_ptr<token>> &tokens);
 
     const std::map<int, std::string> &getVariables() const;
     void setVariables(const std::map<int, std::string> &variables);
@@ -79,7 +84,7 @@ public:
     Expression();
 
 private:
-	std::vector<token*> tokens;
+	std::vector<std::shared_ptr<token>> tokens;
 	std::map<int, std::string> variables;
 	std::map<std::string, int> varValues;
 	expressionForm form;

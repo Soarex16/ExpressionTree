@@ -99,7 +99,6 @@ void Expression::tokenize(std::string s) {
     // current variable ID
     int varId = 0;
     char chr;
-    token *currentTok;
 
     // clear class field before parsing new expression
     tokens.clear();
@@ -110,30 +109,30 @@ void Expression::tokenize(std::string s) {
 
     for (long i = 0; i < n; ++i) {
         chr = s[0];
-        currentTok = new token;
+        token currentTok;
         switch (chr) {
             case '+':
-                currentTok->t = PLUS;
+                currentTok.t = PLUS;
                 s = s.substr(1, s.length() - 1);
                 break;
             case '-':
-                currentTok->t = MINUS;
+                currentTok.t = MINUS;
                 s = s.substr(1, s.length() - 1);
                 break;
             case '*':
-                currentTok->t = MUL;
+                currentTok.t = MUL;
                 s = s.substr(1, s.length() - 1);
                 break;
             case '/':
-                currentTok->t = DIV;
+                currentTok.t = DIV;
                 s = s.substr(1, s.length() - 1);
                 break;
             case '(':
-                currentTok->t = BRACKET_L;
+                currentTok.t = BRACKET_L;
                 s = s.substr(1, s.length() - 1);
                 break;
             case ')':
-                currentTok->t = BRACKET_R;
+                currentTok.t = BRACKET_R;
                 s = s.substr(1, s.length() - 1);
                 break;
             default:
@@ -145,21 +144,21 @@ void Expression::tokenize(std::string s) {
                 } else if (isdigit(chr)) {
                     int num = parseNumber(s);
                     if (num != -1) {
-                        currentTok->t = NUMBER;
-                        currentTok->val = num;
+                        currentTok.t = NUMBER;
+                        currentTok.val = num;
                     }
                 } else if (isalpha(chr)) {
                     std::string identifier = parseIdentifier(s);
-                    currentTok->t = IDENTIFIER;
-                    currentTok->val = varId;
+                    currentTok.t = IDENTIFIER;
+                    currentTok.val = varId;
                     ++varId;
                     variables[varId] = identifier;
                 } else {
-                    throw "Parse error! Unresolved symbol";
+                    throw std::logic_error("Parse error! Unresolved symbol");
                 }
         }
 
-        tokens.push_back(currentTok);
+        tokens.push_back(std::make_shared<token>(currentTok));
     }
 }
 
@@ -176,26 +175,16 @@ Expression Expression::infixToPostfix() {
         return e;
     }
 
-    /**
-    * Auxiliary data structure to determine the priorities of operators
-    */
-    std::map<term, int> opPriority {
-            {PLUS,  1},
-            {MINUS, 1},
-            {MUL,   2},
-            {DIV,   2}
-    };
-
-    std::vector<token *> reversedSequence;
-    std::stack<token *> tokenBuffer;
+    std::vector<std::shared_ptr<token>> reversedSequence;
+    std::stack<std::shared_ptr<token>> tokenBuffer;
 
     for (long i = 0; i < tokens.size(); ++i) {
-        token *tok = tokens[i];
+        token tok = *tokens[i];
 
-        switch (tok->t) {
+        switch (tok.t) {
             case NUMBER:
             case IDENTIFIER: {
-                reversedSequence.push_back(tok);
+                reversedSequence.push_back(std::make_shared<token>(tok));
                 break;
             }
             case PLUS:
@@ -204,20 +193,20 @@ Expression Expression::infixToPostfix() {
             case DIV: {
                 if (!tokenBuffer.empty()) {
                     while (!tokenBuffer.empty()) {
-                        token *top = tokenBuffer.top();
-                        if (opPriority[tok->t] <= opPriority[top->t]) {
-                            reversedSequence.push_back(top);
+                        token top = *tokenBuffer.top();
+                        if (Expression::opPriority[tok.t] <= Expression::opPriority[top.t]) {
+                            reversedSequence.push_back(std::make_shared<token>(top));
                             tokenBuffer.pop();
                         } else {
                             break;
                         }
                     }
                 }
-                tokenBuffer.push(tok);
+                tokenBuffer.push(std::make_shared<token>(tok));
                 break;
             }
             case BRACKET_L: {
-                tokenBuffer.push(tok);
+                tokenBuffer.push(std::make_shared<token>(tok));
                 break;
             }
             case BRACKET_R: {
@@ -233,11 +222,11 @@ Expression Expression::infixToPostfix() {
     }
 
     while (!tokenBuffer.empty()) {
-        token *top = tokenBuffer.top();
-        if (top->t == BRACKET_L || top->t == BRACKET_R) {
-            throw "Error in bracket sequence! (ReversePolishNotation conversion)";
+        token top = *tokenBuffer.top();
+        if (top.t == BRACKET_L || top.t == BRACKET_R) {
+            throw std::domain_error("Error in bracket sequence! (ReversePolishNotation conversion)");
         } else {
-            reversedSequence.push_back(top);
+            reversedSequence.push_back(std::make_shared<token>(top));
             tokenBuffer.pop();
         }
     }
@@ -253,11 +242,11 @@ Expression Expression::infixToPostfix() {
 /**
  * Getters and setters for class fields
  */
-const std::vector<Expression::token *> &Expression::getTokens() const {
+const std::vector<std::shared_ptr<Expression::token>> &Expression::getTokens() const {
     return tokens;
 }
 
-void Expression::setTokens(const std::vector<Expression::token *> &tokens) {
+void Expression::setTokens(const std::vector<std::shared_ptr<token>> &tokens) {
     Expression::tokens = tokens;
 }
 
@@ -281,8 +270,8 @@ void Expression::setVarValues(const std::map<std::string, int> &varValues) {
  * Class destructor
  */
 Expression::~Expression() {
-    for (long i = 0; i < tokens.size(); ++i) {
-        delete tokens[i];
+    for (auto i = tokens.begin(); i != tokens.end(); ++i) {
+        i->reset();
     }
 }
 
@@ -304,7 +293,7 @@ int Expression::applyOperator(int arg1, int arg2, term op) {
         case DIV:
             return arg1 / arg2;
         default:
-            throw "Incorrect operator!";
+            throw std::domain_error("Incorrect operator!");
     }
 }
 
@@ -319,31 +308,31 @@ int Expression::applyOperator(int arg1, int arg2, term op) {
 int Expression::eval() {
     Expression e(*this);
     if (form == PREFIX) {
-        throw "Can't evaluate expression in prefix form!";
+        throw std::domain_error("Can't evaluate expression in prefix form!");
     } else if (form == INFIX) {
         e = infixToPostfix();
     }
 
-    std::stack<token *> calculator;
+    std::stack<token> calculator;
     for (int i = 0; i < e.tokens.size(); ++i) {
-        token *tok = e.tokens[i];
+        token tok = *e.tokens[i];
 
-        switch (tok->t) {
+        switch (tok.t) {
             case NUMBER: {
-                token *var = new token;
-                var->t = NUMBER;
-                var->val = tok->val;
+                token var;
+                var.t = NUMBER;
+                var.val = tok.val;
                 calculator.push(var);
                 break;
             }
             case IDENTIFIER: {
                 if (e.variables.empty() || e.varValues.empty()) {
-                    throw "Expression contains variables, but table of identifiers or the table of their values!";
+                    throw std::invalid_argument("Expression contains variables, but table of identifiers or the table of their values are empty!");
                 }
 
-                token *var = new token;
-                var->t = NUMBER;
-                var->val = varValues[variables[tok->val]];
+                token var;
+                var.t = NUMBER;
+                var.val = varValues[variables[tok.val]];
                 calculator.push(var);
 
                 break;
@@ -353,28 +342,28 @@ int Expression::eval() {
             case MUL:
             case DIV: {
                 if (calculator.size() >= 2) {
-                    token *arg1 = calculator.top();
-                    if (arg1->t != NUMBER) {
-                        throw "There is operator on top of stack!";
+                    token arg1 = calculator.top();
+                    if (arg1.t != NUMBER) {
+                        throw std::logic_error("There is operator on top of stack!");
                     }
 
                     calculator.pop();
-                    token *arg2 = calculator.top();
-                    if (arg2->t != NUMBER) {
-                        throw "There is operator on top of stack!";
+                    token arg2 = calculator.top();
+                    if (arg2.t != NUMBER) {
+                        throw std::logic_error("There is operator on top of stack!");
                     }
 
-                    int res = applyOperator(arg1->val, arg2->val, tok->t);
-                    calculator.top()->val = res;
+                    int res = applyOperator(arg1.val, arg2.val, tok.t);
+                    calculator.top().val = res;
                 } else {
-                    throw "Expression error! Not enough operands to perform calculation!";
+                    throw std::logic_error("Expression error! Not enough operands to perform calculation!");
                 }
                 break;
             }
         }
     }
 
-    return calculator.top()->val;
+    return calculator.top().val;
 }
 
 /**
@@ -390,11 +379,11 @@ bool Expression::verify() {
         e = infixToPostfix();
     }
 
-    std::stack<token *> calculator;
+    std::stack<token> calculator;
     for (int i = 0; i < e.tokens.size(); ++i) {
-        token *tok = e.tokens[i];
+        token tok = *e.tokens[i];
 
-        switch (tok->t) {
+        switch (tok.t) {
             case NUMBER:
             case IDENTIFIER: {
                 calculator.push(tok);
@@ -405,13 +394,13 @@ bool Expression::verify() {
             case MUL:
             case DIV: {
                 if (calculator.size() >= 2) {
-                    token *arg1 = calculator.top();
-                    if (arg1->t != NUMBER && arg1->t != IDENTIFIER) {
+                    token arg1 = calculator.top();
+                    if (arg1.t != NUMBER && arg1.t != IDENTIFIER) {
                         return false;
                     }
                     calculator.pop();
-                    token *arg2 = calculator.top();
-                    if (arg2->t != NUMBER && arg2->t != IDENTIFIER) {
+                    token arg2 = calculator.top();
+                    if (arg2.t != NUMBER && arg2.t != IDENTIFIER) {
                         return false;
                     }
                 } else {
@@ -465,3 +454,10 @@ std::string Expression::toString() {
 
     return result;
 }
+
+std::map<Expression::term, int> Expression::opPriority = {
+    {Expression::PLUS,  1},
+    {Expression::MINUS, 1},
+    {Expression::MUL,   2},
+    {Expression::DIV,   2}
+};
