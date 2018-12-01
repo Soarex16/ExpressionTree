@@ -82,7 +82,7 @@ node* buildTree(node *t, vector<std::shared_ptr<Expression::token>>& tokens) {
         // no operator found outside the brackets => discard the brackets
         if (pos == -1) {
             vector<std::shared_ptr<Expression::token>> v(tokens.begin() + 1, tokens.end() - 1);
-            buildTree(t, v);
+            t = buildTree(t, v);
         } else {
             counter += 5;
             t = new node;
@@ -90,8 +90,8 @@ node* buildTree(node *t, vector<std::shared_ptr<Expression::token>>& tokens) {
             t->r = nullptr;
             t->t = *tokens[pos];
 
-            vector<std::shared_ptr<Expression::token>> left(tokens.begin() + pos + 1, tokens.end());
-            vector<std::shared_ptr<Expression::token>> right(tokens.begin(), tokens.begin() + pos);
+            vector<std::shared_ptr<Expression::token>> left(tokens.begin(), tokens.begin() + pos);
+            vector<std::shared_ptr<Expression::token>> right(tokens.begin() + pos + 1, tokens.end());
 
             t->l = buildTree(t->l, left);
             t->r = buildTree(t->r, right);
