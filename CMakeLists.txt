@@ -3,4 +3,4 @@ project(ExpressionTree)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(ExpressionTree main.cpp Expression.cpp Expression.h)
+add_executable(ExpressionTree main.cpp Expression.cpp Expression.hpp)
